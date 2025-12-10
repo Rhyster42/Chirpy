@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 )
 
 type Response struct {
@@ -17,7 +18,8 @@ func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	type returnVals struct {
-		Valid bool `json:"valid"`
+		Cleaned_Body string `json:"cleaned_body"`
+		Valid        bool   `json:"valid"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -35,6 +37,24 @@ func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondWithJSON(w, http.StatusOK, returnVals{
-		Valid: true,
+		Cleaned_Body: checkProfanity(params.Body),
+		Valid:        true,
 	})
+}
+
+func checkProfanity(body string) string {
+
+	badWords := []string{"kerfuffle", "sharbert", "fornax"}
+
+	word_list := strings.Split(body, " ")
+
+	for i, word := range word_list {
+		lowercase_word := strings.ToLower(word)
+		for _, badword := range badWords {
+			if lowercase_word == badword {
+				word_list[i] = "****"
+			}
+		}
+	}
+	return strings.Join(word_list, " ")
 }
