@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+
+	"github.com/Rhyster42/Chirpy/internal/database"
+	"github.com/google/uuid"
 )
 
 type Response struct {
@@ -11,35 +14,51 @@ type Response struct {
 	Valid bool   `json:"valid"`
 }
 
-func handlerValidateChirp(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request) {
 
 	type parameters struct {
-		Body string `json:"body"`
+		Body    string    `json:"body"`
+		User_id uuid.UUID `json:"user_id"`
 	}
-
-	type returnVals struct {
-		Cleaned_Body string `json:"cleaned_body"`
-		Valid        bool   `json:"valid"`
-	}
-
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
 	err := decoder.Decode(&params)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
+		respondWithError(w, http.StatusInternalServerError, "Couldn't decode request to create Chirp", err)
 		return
 	}
+	params.Body = handlerValidateChirp(w, params.Body)
+
+	dbChirpParams := database.CreateChirpParams{
+		Body:   params.Body,
+		UserID: params.User_id,
+	}
+
+	data, err := cfg.db.CreateChirp(r.Context(), dbChirpParams)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't create Chirp", err)
+		return
+	}
+
+	chirp := Chirp{
+		ID:        data.ID,
+		CreatedAt: data.CreatedAt,
+		UpdatedAt: data.UpdatedAt,
+		Body:      data.Body,
+		UserID:    data.UserID,
+	}
+
+	respondWithJSON(w, http.StatusCreated, chirp)
+}
+
+func handlerValidateChirp(w http.ResponseWriter, body string) string {
 
 	const maxChirpLength = 140
-	if len(params.Body) > maxChirpLength {
+	if len(body) > maxChirpLength {
 		respondWithError(w, http.StatusBadRequest, "Chirp is too long", nil)
-		return
+		return ""
 	}
-
-	respondWithJSON(w, http.StatusOK, returnVals{
-		Cleaned_Body: checkProfanity(params.Body),
-		Valid:        true,
-	})
+	return checkProfanity(body)
 }
 
 func checkProfanity(body string) string {

@@ -27,6 +27,14 @@ type User struct {
 	Email     string    `json:"email"`
 }
 
+type Chirp struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Body      string    `json:"body"`
+	UserID    uuid.UUID `json:"user_id"`
+}
+
 func main() {
 
 	// Initiate database
@@ -57,8 +65,8 @@ func main() {
 	mux.HandleFunc("GET /api/healthz", handlerHealthz)
 	mux.HandleFunc("GET /admin/metrics", apiCfg.handlerServerHits)
 	mux.HandleFunc("POST /admin/reset", apiCfg.handlerReset)
-	mux.HandleFunc("POST /api/validate_chirp", handlerValidateChirp)
 	mux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
+	mux.HandleFunc("POST /api/chirps", apiCfg.handlerCreateChirp)
 
 	srv := &http.Server{
 		Addr:    ":" + port,
