@@ -5,3 +5,11 @@ Content-Type: application/json
 {
   "body": "I had something interesting for a kerfuffle breakfast"
 }
+
+### Test createUser
+POST http://localhost:8080/api/users
+Content-Type: application/json
+
+{
+  "email": "user@example.com"
+}

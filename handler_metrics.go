@@ -20,8 +20,20 @@ func (cfg *apiConfig) handlerServerHits(w http.ResponseWriter, r *http.Request) 
 	w.Write([]byte(msg))
 }
 
-func (cfg *apiConfig) handlerResetMetrics(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) handlerReset(w http.ResponseWriter, r *http.Request) {
+
+	if cfg.platorm != "dev" {
+		w.WriteHeader(http.StatusForbidden)
+		return
+	}
+
+	err := cfg.db.DeleteUsers(r.Context())
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "failed to delete user database", err)
+		return
+	}
+
 	cfg.fileserverHits.Store(0)
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Hits reset to 0"))
+	w.Write([]byte("Hits reset to 0 and database reset."))
 }
