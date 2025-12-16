@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Rhyster42/Chirpy/internal/auth"
 	"github.com/Rhyster42/Chirpy/internal/database"
 	"github.com/google/uuid"
 )
@@ -27,11 +28,24 @@ func (cfg *apiConfig) handlerCreateChirp(w http.ResponseWriter, r *http.Request)
 		respondWithError(w, http.StatusInternalServerError, "Couldn't decode request to create Chirp", err)
 		return
 	}
+
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to retrieve token for user", err)
+		return
+	}
+
+	authUser, err := auth.ValidateJWT(token, cfg.secret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid/Expired token", err)
+		return
+	}
+
 	params.Body = handlerValidateChirp(w, params.Body)
 
 	dbChirpParams := database.CreateChirpParams{
 		Body:   params.Body,
-		UserID: params.User_id,
+		UserID: authUser,
 	}
 
 	data, err := cfg.db.CreateChirp(r.Context(), dbChirpParams)

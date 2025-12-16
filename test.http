@@ -13,3 +13,42 @@ Content-Type: application/json
 {
   "email": "user@example.com"
 }
+
+### Test createChirp
+POST http://localhost:8080/api/chirps
+Content-Type: application/json
+
+{
+  "body": "Hello, world!",
+  "user_id": "e3465d75-2b2d-4eb5-9dac-953b8f73b123"
+}
+
+### Test createChirp 2
+POST http://localhost:8080/api/chirps
+Content-Type: application/json
+
+{
+  "body": "To be or not to be, that is the question",
+  "user_id": "e3465d75-2b2d-4eb5-9dac-953b8f73b123"
+}
+
+### Test createChirp 3
+POST http://localhost:8080/api/chirps
+Content-Type: application/json
+
+{
+  "body": "Better out then in I always fornax say.",
+  "user_id": "e3465d75-2b2d-4eb5-9dac-953b8f73b123"
+}
+
+### Test Reset
+POST http://localhost:8080/admin/reset
+Content-Type: application/json
+
+### Test getAllChirps
+GET http://localhost:8080/api/chirps
+Content-Type: application/json
+
+### Test getChirp
+GET http://localhost:8080/api/chirps/111221e5-c0c0-4a6d-ad23-49505d32c529
+Content-Type: application/json
