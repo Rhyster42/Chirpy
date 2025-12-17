@@ -107,3 +107,57 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 	respondWithJSON(w, http.StatusOK, returnedUser)
 
 }
+
+func (cfg *apiConfig) handlerUpdateEmailAndPassword(w http.ResponseWriter, r *http.Request) {
+	//pulling/veriying access token
+	accessToken, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Failed to retrieve Access Token", err)
+		return
+	}
+	if accessToken == "" {
+		respondWithError(w, http.StatusUnauthorized, "Invalid/missing token", err)
+		return
+	}
+
+	// retrieve New Email and Password from Request
+	decoder := json.NewDecoder(r.Body)
+	params := parameters{}
+	err = decoder.Decode(&params)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
+		return
+	}
+
+	userID, err := auth.ValidateJWT(accessToken, cfg.secret)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid access Token", err)
+		return
+	}
+
+	hashedPassword, err := auth.HashPassword(params.Password)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to hash password", err)
+		return
+	}
+
+	newUser, err := cfg.db.ChangeEmailAndPassword(r.Context(),
+		database.ChangeEmailAndPasswordParams{
+			ID:             userID,
+			Email:          params.Email,
+			HashedPassword: hashedPassword,
+		})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to change Email and Password.", err)
+		return
+	}
+
+	userResponse := User{
+		ID:        newUser.ID,
+		CreatedAt: newUser.CreatedAt.Time,
+		UpdatedAt: newUser.UpdatedAt.Time,
+		Email:     newUser.Email,
+	}
+
+	respondWithJSON(w, http.StatusOK, userResponse)
+}

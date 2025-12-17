@@ -12,7 +12,7 @@ func (cfg *apiConfig) handlerValidateRefreshToken(w http.ResponseWriter, r *http
 
 	refreshToken, err := auth.GetBearerToken(r.Header)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "failed to retreive bearer token", err)
+		respondWithError(w, http.StatusInternalServerError, "failed to retrieve bearer token", err)
 		return
 	}
 	if refreshToken == "" {
