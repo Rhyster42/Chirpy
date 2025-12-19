@@ -2,16 +2,37 @@ package main
 
 import (
 	"net/http"
+	"slices"
 
+	"github.com/Rhyster42/Chirpy/internal/database"
 	"github.com/google/uuid"
 )
 
 func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request) {
 
-	data, err := cfg.db.GetAllChirps(r.Context())
-	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "Failed to retrieve chirps", err)
+	authorString := r.URL.Query().Get("author_id")
+
+	var data []database.Chirp
+	var err error
+	if authorString == "" {
+		data, err = cfg.db.GetAllChirps(r.Context())
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Failed to retrieve chirps", err)
+			return
+		}
+	} else {
+		authorID, err := uuid.Parse(authorString)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Failed to parse ID", err)
+			return
+		}
+		data, err = cfg.db.GetChirpsFromUser(r.Context(), authorID)
+		if err != nil {
+			respondWithError(w, http.StatusInternalServerError, "Failed to retrieve Authors Chirps", err)
+			return
+		}
 	}
+	sort := r.URL.Query().Get("sort")
 
 	chirps := make([]Chirp, len(data))
 
@@ -23,6 +44,10 @@ func (cfg *apiConfig) handlerGetAllChirps(w http.ResponseWriter, r *http.Request
 			Body:      item.Body,
 			UserID:    item.UserID,
 		}
+	}
+
+	if sort == "desc" {
+		slices.Reverse(chirps)
 	}
 
 	respondWithJSON(w, http.StatusOK, chirps)

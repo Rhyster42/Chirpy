@@ -19,6 +19,7 @@ type apiConfig struct {
 	db             *database.Queries
 	platorm        string
 	secret         string
+	polka_key      string
 }
 
 type User struct {
@@ -28,6 +29,7 @@ type User struct {
 	Email        string    `json:"email"`
 	Token        string    `json:"token"`
 	RefreshToken string    `json:"refresh_token"`
+	IsChirpyRed  bool      `json:"is_chirpy_red"`
 }
 
 type Chirp struct {
@@ -57,6 +59,8 @@ func main() {
 	}
 	secretkey := os.Getenv("SECRET")
 
+	polkaKey := os.Getenv("POLKA_KEY")
+
 	datb, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Printf("error initiating database: %e", err)
@@ -65,7 +69,7 @@ func main() {
 
 	const filepathRoot = "."
 	const port = "8080"
-	apiCfg := apiConfig{db: dbQueries, platorm: "dev", secret: secretkey}
+	apiCfg := apiConfig{db: dbQueries, platorm: "dev", secret: secretkey, polka_key: polkaKey}
 
 	// endpoints
 	mux := http.NewServeMux()
@@ -82,6 +86,7 @@ func main() {
 	mux.HandleFunc("POST /api/revoke", apiCfg.handlerRevokeToken)
 	mux.HandleFunc("PUT /api/users", apiCfg.handlerUpdateEmailAndPassword)
 	mux.HandleFunc("DELETE /api/chirps/{chirpID}", apiCfg.handlerDeleteChirp)
+	mux.HandleFunc("POST /api/polka/webhooks", apiCfg.handlerUpgradeUser)
 
 	srv := &http.Server{
 		Addr:    ":" + port,

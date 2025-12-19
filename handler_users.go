@@ -2,16 +2,25 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/Rhyster42/Chirpy/internal/auth"
 	"github.com/Rhyster42/Chirpy/internal/database"
+	"github.com/google/uuid"
 )
 
 type parameters struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+type upgradeParams struct {
+	Event string `json:"event"`
+	Data  struct {
+		UserID uuid.UUID `json:"user_id"`
+	}
 }
 
 func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) {
@@ -39,10 +48,11 @@ func (cfg *apiConfig) handlerCreateUser(w http.ResponseWriter, r *http.Request) 
 	}
 
 	user := User{
-		ID:        data.ID,
-		CreatedAt: data.CreatedAt.Time,
-		UpdatedAt: data.UpdatedAt.Time,
-		Email:     data.Email,
+		ID:          data.ID,
+		CreatedAt:   data.CreatedAt.Time,
+		UpdatedAt:   data.UpdatedAt.Time,
+		Email:       data.Email,
+		IsChirpyRed: false,
 	}
 
 	respondWithJSON(w, http.StatusCreated, user)
@@ -103,6 +113,7 @@ func (cfg *apiConfig) handlerLogin(w http.ResponseWriter, r *http.Request) {
 		Email:        user.Email,
 		Token:        token,
 		RefreshToken: refreshToken,
+		IsChirpyRed:  user.IsChirpyRed.Bool,
 	}
 	respondWithJSON(w, http.StatusOK, returnedUser)
 
@@ -153,11 +164,45 @@ func (cfg *apiConfig) handlerUpdateEmailAndPassword(w http.ResponseWriter, r *ht
 	}
 
 	userResponse := User{
-		ID:        newUser.ID,
-		CreatedAt: newUser.CreatedAt.Time,
-		UpdatedAt: newUser.UpdatedAt.Time,
-		Email:     newUser.Email,
+		ID:          newUser.ID,
+		CreatedAt:   newUser.CreatedAt.Time,
+		UpdatedAt:   newUser.UpdatedAt.Time,
+		Email:       newUser.Email,
+		IsChirpyRed: newUser.IsChirpyRed.Bool,
 	}
 
 	respondWithJSON(w, http.StatusOK, userResponse)
+}
+
+func (cfg *apiConfig) handlerUpgradeUser(w http.ResponseWriter, r *http.Request) {
+
+	requestAPI, err := auth.GetAPIKey(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Invalid/missing API header", err)
+		return
+	}
+	if requestAPI != cfg.polka_key {
+		respondWithError(w, http.StatusUnauthorized, "Incorrect API key", errors.New("Incorrect API"))
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	params := upgradeParams{}
+	err = decoder.Decode(&params)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
+		return
+	}
+
+	if params.Event != "user.upgraded" {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	err = cfg.db.UpgradeUser(r.Context(), params.Data.UserID)
+	if err != nil {
+		respondWithError(w, http.StatusNotFound, "Failed to find user", err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
